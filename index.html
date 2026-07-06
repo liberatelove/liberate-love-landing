@@ -169,8 +169,82 @@
 
         .delay-1 { transition-delay: 0.3s; }
         .delay-2 { transition-delay: 0.6s; }
+        .delay-3 { transition-delay: 0.9s; }
 
-        
+        .optin-form {
+            max-width: 460px;
+            margin: 3rem auto 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .optin-form input {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid rgba(255, 250, 240, 0.22);
+            color: var(--c-text);
+            font-family: var(--font-mono);
+            font-size: 0.95rem;
+            padding: 0.85rem 0.25rem;
+            outline: none;
+            text-align: center;
+            letter-spacing: 0.04em;
+            transition: border-color 0.4s var(--ease-out);
+            -webkit-appearance: none;
+        }
+
+        .optin-form input::placeholder {
+            color: var(--c-text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            font-size: 0.7rem;
+        }
+
+        .optin-form input:focus {
+            border-bottom-color: rgba(255, 250, 240, 0.7);
+        }
+
+        .optin-submit {
+            background: transparent;
+            border: 1px solid rgba(255, 250, 240, 0.28);
+            color: var(--c-text);
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            letter-spacing: 0.24em;
+            text-transform: uppercase;
+            padding: 1rem 2rem;
+            margin-top: 0.5rem;
+            cursor: pointer;
+            transition: background 0.35s var(--ease-out), border-color 0.35s var(--ease-out);
+        }
+
+        .optin-submit:hover,
+        .optin-submit:focus {
+            background: rgba(255, 250, 240, 0.05);
+            border-color: rgba(255, 250, 240, 0.7);
+            outline: none;
+        }
+
+        .optin-submit:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        .optin-message {
+            font-family: var(--font-serif);
+            font-style: italic;
+            font-size: 1.05rem;
+            text-align: center;
+            margin-top: 1.5rem;
+            min-height: 1.4em;
+            opacity: 0;
+            transition: opacity 0.6s var(--ease-out);
+        }
+
+        .optin-message.visible { opacity: 0.85; }
+        .optin-message.error { color: rgba(255, 190, 170, 0.9); }
+
         @media (max-width: 768px) {
             .ui-frame { display: none; }
             .stanza { text-align: center; padding: 0 1rem; }
@@ -223,7 +297,15 @@
         <section vid="34">
             <h2 class="manifesto-title reveal" vid="35">Liberate.Love</h2>
             <span class="date-reveal reveal delay-1" vid="36">7.22.2026</span>
-            <p class="outro reveal delay-2" style="font-size: 1rem; margin-top: 3rem; opacity: 0.6;" vid="37">We'll see you inside.</p>
+
+            <form id="optinForm" class="optin-form reveal delay-2" novalidate>
+                <input type="text" name="first_name" placeholder="First name" autocomplete="given-name" required aria-label="First name">
+                <input type="email" name="email" placeholder="Email" autocomplete="email" required aria-label="Email">
+                <button type="submit" class="optin-submit">Join the list</button>
+                <p id="optinMessage" class="optin-message" role="status" aria-live="polite"></p>
+            </form>
+
+            <p class="outro reveal delay-3" style="font-size: 1rem; margin-top: 3rem; opacity: 0.6;" vid="37">We'll see you inside.</p>
         </section>
     </main>
 
@@ -251,6 +333,50 @@
         document.querySelectorAll('.reveal').forEach(el => {
             observer.observe(el);
         });
+
+        const optinForm = document.getElementById('optinForm');
+        if (optinForm) {
+            optinForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const btn = optinForm.querySelector('.optin-submit');
+                const msg = document.getElementById('optinMessage');
+                const firstName = optinForm.first_name.value.trim();
+                const email = optinForm.email.value.trim();
+
+                if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    msg.textContent = 'Please enter a valid email.';
+                    msg.className = 'optin-message visible error';
+                    return;
+                }
+
+                btn.disabled = true;
+                const originalLabel = btn.textContent;
+                btn.textContent = 'Sending…';
+                msg.textContent = '';
+                msg.className = 'optin-message';
+
+                try {
+                    const body = new FormData();
+                    body.append('email_address', email);
+                    body.append('fields[first_name]', firstName);
+
+                    await fetch('https://app.kit.com/forms/9648196/subscriptions', {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        body,
+                    });
+
+                    optinForm.querySelectorAll('input, button').forEach(el => el.style.display = 'none');
+                    msg.textContent = 'Check your email to confirm.';
+                    msg.className = 'optin-message visible';
+                } catch (err) {
+                    msg.textContent = 'Something went wrong. Please try again.';
+                    msg.className = 'optin-message visible error';
+                    btn.disabled = false;
+                    btn.textContent = originalLabel;
+                }
+            });
+        }
 
         
         window.addEventListener('scroll', () => {
